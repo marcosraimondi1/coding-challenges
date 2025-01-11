@@ -14,6 +14,8 @@
 
 void bubbleSort(int array[MAX_BARS]);
 void quickSort(int array[MAX_BARS], int start, int end);
+void mergeSort(int array[MAX_BARS], int start, int end);
+
 int colors[MAX_BARS] = {};
 int delay_ms = 0;
 bool isSorting = false;
@@ -32,7 +34,7 @@ int main() {
     e = rand() % MAX_BARS;
   }
 
-  const char *algorithmsList[] = {"bubbleSort", "quickSort"};
+  const char *algorithmsList[] = {"bubbleSort", "quickSort", "mergeSort"};
   static const char *currentItem = algorithmsList[0];
 
   std::thread sortingThread;
@@ -84,6 +86,8 @@ int main() {
           sortingThread = std::thread(bubbleSort, array);
         else if (currentItem == algorithmsList[1])
           sortingThread = std::thread(quickSort, array, 0, MAX_BARS - 1);
+        else if (currentItem == algorithmsList[2])
+          sortingThread = std::thread(mergeSort, array, 0, MAX_BARS - 1);
         sortingThread.detach();
       }
     }
@@ -228,6 +232,66 @@ void quickSort(int array[MAX_BARS], int start, int end) {
 
   quickSort(array, start, pivotIndex - 1); // left subarray
   quickSort(array, pivotIndex + 1, end);   // right subarray
+
+  if (start == 0 && end == MAX_BARS - 1)
+    isSorting = false;
+}
+
+void merge(int array[MAX_BARS], int start, int end, int middle) {
+  int i = start;            // left subarray index
+  int j = middle + 1;       // rigth subarray index
+  int cpy[end - start + 1]; // auxiliary copy
+  int index = 0;            // auxiliary index
+
+  while (true) {
+    if (array[i] < array[j])
+      cpy[index] = array[i++];
+    else
+      cpy[index] = array[j++];
+
+    index++;
+
+    if (i > middle) {
+      // add all j
+      for (int n = j; n < end + 1; n++)
+        cpy[index++] = array[n];
+
+      break;
+    }
+
+    if (j > end) {
+      // add all i
+      for (int n = i; n < middle + 1; n++)
+        cpy[index++] = array[n];
+
+      break;
+    }
+  }
+
+  for (int i = start; i < end + 1; i++)
+    colors[i] = 1;
+
+  for (int i = start; i < end + 1; i++) {
+    usleep(1000 * delay_ms / 2);
+    array[i] = cpy[i - start];
+  }
+
+  for (int i = start; i < end + 1; i++)
+    colors[i] = 0;
+}
+
+void mergeSort(int array[MAX_BARS], int start, int end) {
+  if (start >= end)
+    return;
+
+  // split array
+  int middle = (start + end) / 2;
+
+  mergeSort(array, start, middle);
+  mergeSort(array, middle + 1, end);
+
+  // merge
+  merge(array, start, end, middle);
 
   if (start == 0 && end == MAX_BARS - 1)
     isSorting = false;
