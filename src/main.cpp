@@ -1,12 +1,13 @@
 #include <SFML/Graphics.hpp>
-#include <SFML/Graphics/Color.hpp>
+#include <SFML/System/Clock.hpp>
+#include <imgui-SFML.h>
+#include <imgui.h>
 #include <thread>
 #include <unistd.h>
 
-#define WINDOW_WIDTH 1000
-#define WINDOW_HEIGHT 800
+#define WINDOW_WIDTH 1920
+#define WINDOW_HEIGHT 1080
 #define MAX_BARS 1000
-#define SWAP_SLEEP_MS 0
 
 #define BAR_WIDTH WINDOW_WIDTH / MAX_BARS
 #define BAR_STEP WINDOW_HEIGHT / MAX_BARS
@@ -14,39 +15,98 @@
 void bubbleSort(int array[MAX_BARS]);
 void quickSort(int array[MAX_BARS], int start, int end);
 int colors[MAX_BARS] = {};
+int delay_ms = 0;
+bool isSorting = false;
 
 int main() {
   auto window = sf::RenderWindow(sf::VideoMode({WINDOW_WIDTH, WINDOW_HEIGHT}),
                                  "Sorting Algorithms");
   window.setFramerateLimit(144);
 
+  ImGui::SFML::Init(window);
+  sf::Clock clock;
+  std::srand(time(NULL));
+
   int array[MAX_BARS] = {};
   for (int &e : array) {
     e = rand() % MAX_BARS;
   }
 
-  std::thread sortingThread = std::thread(quickSort, array, 0, MAX_BARS - 1);
-  // std::thread sortingThread = std::thread(bubbleSort, array);
+  const char *algorithmsList[] = {"bubbleSort", "quickSort"};
+  static const char *currentItem = algorithmsList[0];
+
+  std::thread sortingThread;
+  float sortingTime = 0;
 
   while (window.isOpen()) {
-    while (const std::optional event = window.pollEvent()) {
-      if (event->is<sf::Event::Closed>()) {
+    for (auto event = sf::Event(); window.pollEvent(event);) {
+      if (event.type == sf::Event::Closed) {
         window.close();
+      }
+      ImGui::SFML::ProcessEvent(event);
+    }
+
+    sf::Time elapsed = clock.restart();
+
+    if (isSorting)
+      sortingTime += elapsed.asSeconds();
+
+    ImGui::SFML::Update(window, elapsed);
+
+    ImGui::Begin("Tools");
+
+    if (ImGui::BeginCombo("##combo", currentItem)) {
+      for (int i = 0; i < IM_ARRAYSIZE(algorithmsList); i++) {
+        bool is_selected = (currentItem == algorithmsList[i]);
+
+        if (ImGui::Selectable(algorithmsList[i], is_selected))
+          currentItem = algorithmsList[i];
+
+        if (is_selected) {
+          ImGui::SetItemDefaultFocus();
+        }
+      }
+      ImGui::EndCombo();
+    }
+
+    ImGui::SliderInt("Delay", &delay_ms, 0, 200);
+    if (ImGui::Button("Reset")) {
+      for (int &e : array) {
+        e = rand() % MAX_BARS;
       }
     }
 
+    if (ImGui::Button("Sort")) {
+      if (!isSorting) {
+        isSorting = true;
+        sortingTime = 0;
+        if (currentItem == algorithmsList[0])
+          sortingThread = std::thread(bubbleSort, array);
+        else if (currentItem == algorithmsList[1])
+          sortingThread = std::thread(quickSort, array, 0, MAX_BARS - 1);
+        sortingThread.detach();
+      }
+    }
+
+    ImGui::Text("Time: %.2f s", sortingTime);
+
+    ImGui::End();
+
     window.clear();
 
-    int x = -BAR_WIDTH;
+    int barWidth = window.getSize().x / MAX_BARS;
+    int barStep = window.getSize().y / MAX_BARS;
+
+    int x = -barWidth;
     int y = 0;
     for (int i = 0; i < MAX_BARS; i++) {
-
       sf::RectangleShape rectangle;
+      rectangle.setOutlineThickness(0);
       int e = array[i];
-      x += BAR_WIDTH;
 
-      rectangle.setSize({BAR_WIDTH, e * BAR_STEP});
-      rectangle.setPosition({x + BAR_WIDTH, y});
+      rectangle.setSize({barWidth, e * barStep});
+      rectangle.setPosition({x + barWidth, y});
+      x += barWidth;
 
       switch (colors[i]) {
       case 1:
@@ -63,8 +123,11 @@ int main() {
       window.draw(rectangle);
     }
 
+    ImGui::SFML::Render(window);
+
     window.display();
   }
+  ImGui::SFML::Shutdown();
 }
 
 void swap(int &a, int &b) {
@@ -79,11 +142,12 @@ void bubbleSort(int array[MAX_BARS]) {
       if (array[j] > array[j + 1]) {
         colors[j] = 1;
         swap(array[j], array[j + 1]);
-        usleep(1000 * SWAP_SLEEP_MS);
+        usleep(1000 * delay_ms);
         colors[j] = 0;
       }
     }
   }
+  isSorting = false;
 }
 
 // count how many numbers are smaller than the pivot
@@ -98,12 +162,12 @@ int partition(int array[MAX_BARS], int start, int end) {
 
   for (int i = start; i < end; i++) {
     colors[i] = 2;
-    usleep(1000 * SWAP_SLEEP_MS / 2);
+    usleep(1000 * delay_ms / 2);
     if (array[i] <= pivot) {
       swap(array[i], array[start + count]);
       count++;
     }
-    usleep(1000 * SWAP_SLEEP_MS / 2);
+    usleep(1000 * delay_ms / 2);
     colors[i] = 0;
   }
 
@@ -124,7 +188,7 @@ int partition_opt(int array[MAX_BARS], int start, int end) {
   while (i <= j) {
     colors[i] = 2;
     colors[j] = 2;
-    usleep(1000 * SWAP_SLEEP_MS);
+    usleep(1000 * delay_ms);
 
     if (array[i] >= pivot && array[j] <= pivot) {
       swap(array[i], array[j]);
@@ -147,7 +211,7 @@ int partition_opt(int array[MAX_BARS], int start, int end) {
 
   swap(array[end], array[i]);
 
-  usleep(1000 * SWAP_SLEEP_MS);
+  usleep(1000 * delay_ms);
 
   colors[i] = 0;
   colors[j] = 0;
@@ -164,6 +228,7 @@ void quickSort(int array[MAX_BARS], int start, int end) {
 
   quickSort(array, start, pivotIndex - 1); // left subarray
   quickSort(array, pivotIndex + 1, end);   // right subarray
-}
 
-void mergeSort();
+  if (start == 0 && end == MAX_BARS - 1)
+    isSorting = false;
+}
