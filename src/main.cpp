@@ -1,5 +1,6 @@
 #include <SFML/Graphics.hpp>
 #include <SFML/System/Clock.hpp>
+#include <cstdlib>
 #include <imgui-SFML.h>
 #include <imgui.h>
 #include <thread>
@@ -15,6 +16,7 @@
 void bubbleSort(int array[MAX_BARS]);
 void quickSort(int array[MAX_BARS], int start, int end);
 void mergeSort(int array[MAX_BARS], int start, int end);
+void heapSort(int array[MAX_BARS], int size);
 
 int colors[MAX_BARS] = {};
 int delay_ms = 0;
@@ -34,7 +36,8 @@ int main() {
     e = rand() % MAX_BARS;
   }
 
-  const char *algorithmsList[] = {"bubbleSort", "quickSort", "mergeSort"};
+  const char *algorithmsList[] = {"bubbleSort", "quickSort", "mergeSort",
+                                  "heapSort"};
   static const char *currentItem = algorithmsList[0];
 
   std::thread sortingThread;
@@ -88,6 +91,9 @@ int main() {
           sortingThread = std::thread(quickSort, array, 0, MAX_BARS - 1);
         else if (currentItem == algorithmsList[2])
           sortingThread = std::thread(mergeSort, array, 0, MAX_BARS - 1);
+        else if (currentItem == algorithmsList[3])
+          sortingThread = std::thread(heapSort, array, MAX_BARS);
+
         sortingThread.detach();
       }
     }
@@ -230,8 +236,11 @@ void quickSort(int array[MAX_BARS], int start, int end) {
 
   int pivotIndex = partition_opt(array, start, end);
 
-  quickSort(array, start, pivotIndex - 1); // left subarray
-  quickSort(array, pivotIndex + 1, end);   // right subarray
+  std::thread t1 = std::thread(quickSort, array, start, pivotIndex - 1);
+  std::thread t2 = std::thread(quickSort, array, pivotIndex + 1, end);
+
+  t1.join();
+  t2.join();
 
   if (start == 0 && end == MAX_BARS - 1)
     isSorting = false;
@@ -287,12 +296,75 @@ void mergeSort(int array[MAX_BARS], int start, int end) {
   // split array
   int middle = (start + end) / 2;
 
-  mergeSort(array, start, middle);
-  mergeSort(array, middle + 1, end);
+  std::thread t1 = std::thread(mergeSort, array, start, middle);
+  std::thread t2 = std::thread(mergeSort, array, middle + 1, end);
+
+  t1.join();
+  t2.join();
 
   // merge
   merge(array, start, end, middle);
 
   if (start == 0 && end == MAX_BARS - 1)
     isSorting = false;
+}
+
+int getLeftChild(int parent) { return 2 * parent + 1; };
+
+int getRightChild(int parent) { return 2 * parent + 2; };
+
+int getParent(int child) { return (child - 1) / 2; };
+
+void siftDown(int array[MAX_BARS], int root, int size) {
+  // while children exists
+  while (getLeftChild(root) < size) {
+    int childL = getLeftChild(root);
+    int childR = getRightChild(root);
+    int greaterChild = childL;
+
+    if (childR < size && array[childL] < array[childR]) {
+      greaterChild = childR;
+    }
+
+    if (array[greaterChild] > array[root]) {
+      swap(array[greaterChild], array[root]);
+
+      // fix possibly broken heap from new child value
+      siftDown(array, greaterChild, size);
+
+    } else {
+      // root is greater than children (assuming children are valid heaps)
+      return;
+    }
+  }
+};
+
+// create heap from array
+void heapify(int array[MAX_BARS], int size) {
+  // build heap from the last leaf to the root
+  int root = getParent(size - 1) + 1;
+
+  while (root > 0) {
+    root--;
+    // check if root complies with property (root > its 2 children)
+    siftDown(array, root, size);
+  }
+};
+
+void heapSort(int array[MAX_BARS], int size) {
+  // create heap data structure from array
+  heapify(array, size);
+
+  int end = size;
+  while (end > 1) {
+    end--;                      // reduce the heap size
+    swap(array[0], array[end]); // move greater value to end of the array
+    siftDown(array, 0, end);    // fix heap
+
+    colors[end] = 1;
+    usleep(1000 * delay_ms);
+    colors[end] = 0;
+  }
+
+  isSorting = false;
 }
