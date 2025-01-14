@@ -48,3 +48,11 @@ the following algorithms are implemented:
    make
    ```
 3. Run the binary `build/bin/main`
+
+## Capture
+
+
+https://github.com/user-attachments/assets/f84b68b3-7bdb-4ba6-a34b-3b22d7270da9
+
+
+
