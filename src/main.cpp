@@ -17,6 +17,7 @@ void bubbleSort(int array[MAX_BARS]);
 void quickSort(int array[MAX_BARS], int start, int end);
 void mergeSort(int array[MAX_BARS], int start, int end);
 void heapSort(int array[MAX_BARS], int size);
+void selectionSort(int array[MAX_BARS]);
 
 int colors[MAX_BARS] = {};
 int delay_ms = 0;
@@ -37,7 +38,7 @@ int main() {
   }
 
   const char *algorithmsList[] = {"bubbleSort", "quickSort", "mergeSort",
-                                  "heapSort"};
+                                  "heapSort", "selectionSort"};
   static const char *currentItem = algorithmsList[0];
 
   std::thread sortingThread;
@@ -93,12 +94,14 @@ int main() {
           sortingThread = std::thread(mergeSort, array, 0, MAX_BARS - 1);
         else if (currentItem == algorithmsList[3])
           sortingThread = std::thread(heapSort, array, MAX_BARS);
+        else if (currentItem == algorithmsList[4])
+          sortingThread = std::thread(selectionSort, array);
 
         sortingThread.detach();
       }
     }
 
-    ImGui::Text("Time: %.2f s", sortingTime);
+    ImGui::Text("Time: %.5f s", sortingTime);
 
     ImGui::End();
 
@@ -152,7 +155,8 @@ void bubbleSort(int array[MAX_BARS]) {
       if (array[j] > array[j + 1]) {
         colors[j] = 1;
         swap(array[j], array[j + 1]);
-        usleep(1000 * delay_ms);
+        if (delay_ms > 0)
+          usleep(1000 * delay_ms);
         colors[j] = 0;
       }
     }
@@ -172,12 +176,14 @@ int partition(int array[MAX_BARS], int start, int end) {
 
   for (int i = start; i < end; i++) {
     colors[i] = 2;
-    usleep(1000 * delay_ms / 2);
+    if (delay_ms > 0)
+      usleep(1000 * delay_ms / 2);
     if (array[i] <= pivot) {
       swap(array[i], array[start + count]);
       count++;
     }
-    usleep(1000 * delay_ms / 2);
+    if (delay_ms > 0)
+      usleep(1000 * delay_ms / 2);
     colors[i] = 0;
   }
 
@@ -198,7 +204,8 @@ int partition_opt(int array[MAX_BARS], int start, int end) {
   while (i <= j) {
     colors[i] = 2;
     colors[j] = 2;
-    usleep(1000 * delay_ms);
+    if (delay_ms > 0)
+      usleep(1000 * delay_ms);
 
     if (array[i] >= pivot && array[j] <= pivot) {
       swap(array[i], array[j]);
@@ -221,7 +228,8 @@ int partition_opt(int array[MAX_BARS], int start, int end) {
 
   swap(array[end], array[i]);
 
-  usleep(1000 * delay_ms);
+  if (delay_ms > 0)
+    usleep(1000 * delay_ms);
 
   colors[i] = 0;
   colors[j] = 0;
@@ -236,11 +244,12 @@ void quickSort(int array[MAX_BARS], int start, int end) {
 
   int pivotIndex = partition_opt(array, start, end);
 
-  std::thread t1 = std::thread(quickSort, array, start, pivotIndex - 1);
-  std::thread t2 = std::thread(quickSort, array, pivotIndex + 1, end);
-
-  t1.join();
-  t2.join();
+  quickSort(array, start, pivotIndex - 1);
+  quickSort(array, pivotIndex + 1, end);
+  // std::thread t1 = std::thread(quickSort, array, start, pivotIndex - 1);
+  // std::thread t2 = std::thread(quickSort, array, pivotIndex + 1, end);
+  // t1.join();
+  // t2.join();
 
   if (start == 0 && end == MAX_BARS - 1)
     isSorting = false;
@@ -281,7 +290,8 @@ void merge(int array[MAX_BARS], int start, int end, int middle) {
     colors[i] = 1;
 
   for (int i = start; i < end + 1; i++) {
-    usleep(1000 * delay_ms / 2);
+    if (delay_ms > 0)
+      usleep(1000 * delay_ms / 2);
     array[i] = cpy[i - start];
   }
 
@@ -296,11 +306,12 @@ void mergeSort(int array[MAX_BARS], int start, int end) {
   // split array
   int middle = (start + end) / 2;
 
-  std::thread t1 = std::thread(mergeSort, array, start, middle);
-  std::thread t2 = std::thread(mergeSort, array, middle + 1, end);
-
-  t1.join();
-  t2.join();
+  mergeSort(array, start, middle);
+  mergeSort(array, middle + 1, end);
+  // std::thread t1 = std::thread(mergeSort, array, start, middle);
+  // std::thread t2 = std::thread(mergeSort, array, middle + 1, end);
+  // t1.join();
+  // t2.join();
 
   // merge
   merge(array, start, end, middle);
@@ -362,8 +373,31 @@ void heapSort(int array[MAX_BARS], int size) {
     siftDown(array, 0, end);    // fix heap
 
     colors[end] = 1;
-    usleep(1000 * delay_ms);
+    if (delay_ms > 0)
+      usleep(1000 * delay_ms);
     colors[end] = 0;
+  }
+
+  isSorting = false;
+}
+
+void selectionSort(int array[MAX_BARS]) {
+  for (int i = 0; i < MAX_BARS; i++) {
+    for (int j = i + 1; j < MAX_BARS; j++) {
+      if (array[j] < array[i]) {
+        colors[j] = 1;
+        colors[i] = 1;
+        if (delay_ms > 0)
+          usleep(1000 * delay_ms / 2);
+
+        swap(array[i], array[j]);
+
+        if (delay_ms > 0)
+          usleep(1000 * delay_ms / 2);
+        colors[j] = 0;
+        colors[i] = 0;
+      }
+    }
   }
 
   isSorting = false;
