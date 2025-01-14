@@ -32,6 +32,8 @@ set(IMGUI_DIR ${imgui_SOURCE_DIR})
 set(IMGUI_SFML_FIND_SFML OFF)
 FetchContent_MakeAvailable(imgui-sfml)
 
+include_directories(include)
+
 add_executable(main src/main.cpp)
 target_link_libraries(main PRIVATE ImGui-SFML::ImGui-SFML)
 target_compile_features(main PRIVATE cxx_std_17)
