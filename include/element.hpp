@@ -31,8 +31,8 @@ public:
     float height = value * window.getSize().y;
     sf::RectangleShape rect = sf::RectangleShape({});
 
-    rect.setSize({barWidth, height});
-    rect.setPosition({barWidth * position, window.getSize().y - height});
+    rect.setSize({barWidth / 2, height});
+    rect.setPosition({barWidth * position / 2, window.getSize().y - height});
     rect.setFillColor(color);
     window.draw(rect);
   };

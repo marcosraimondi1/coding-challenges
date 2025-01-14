@@ -26,13 +26,12 @@ int delay_ms = 0;
 bool isSorting = false;
 
 int main() {
-  auto window = sf::RenderWindow(sf::VideoMode({WINDOW_WIDTH, WINDOW_HEIGHT}),
+  auto window = sf::RenderWindow(sf::VideoMode(sf::VideoMode::getDesktopMode()),
                                  "Sorting Algorithms");
   window.setFramerateLimit(144);
-
   ImGui::SFML::Init(window);
   sf::Clock clock;
-  // std::srand(time(NULL));
+  std::srand(time(NULL));
 
   std::vector<Element> elements;
   elements.resize(maxBars);
