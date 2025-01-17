@@ -6,7 +6,7 @@
 #include <imgui-SFML.h>
 #include <imgui.h>
 
-void drawGui(float &freq);
+void drawGui(float &freq, int &nWaves, float &amplitude);
 
 int main() {
   sf::ContextSettings settings;
@@ -18,27 +18,30 @@ int main() {
   ImGui::SFML::Init(window);
   sf::Clock clock;
 
-  sf::CircleShape other = sf::CircleShape(50);
-  sf::CircleShape circle = sf::CircleShape(100, 50);
-
-  other.setOrigin(50, 50);
-  circle.setOrigin(100, 100);
-
-  circle.setPosition({200, 200});
-  other.setPosition({300, 200});
-
-  circle.setFillColor(sf::Color::Transparent);
-  circle.setOutlineThickness(2);
-  other.setFillColor(sf::Color::Transparent);
-  other.setOutlineThickness(1);
-
+  int nWaves = 10;
+  int nextSize = nWaves;
   float freq = 1;
-  float amplitude = 100;
   float time = 0;
-  float phase = 0;
 
-  sf::VertexArray wave = sf::VertexArray(sf::PrimitiveType::LineStrip, 400);
+  sf::VertexArray wave = sf::VertexArray(sf::PrimitiveType::LineStrip, 500);
   sf::VertexArray line = sf::VertexArray(sf::PrimitiveType::LineStrip, 2);
+
+  sf::Vector2f initialPosition = {100, 400};
+  float amplitude = 50;
+  float nextAmplitude = amplitude;
+
+  std::vector<sf::CircleShape> series;
+  series.resize(nWaves);
+
+  int n = 1;
+  for (auto &s : series) {
+    s.setRadius(amplitude / n);
+    s.setOrigin({s.getRadius(), s.getRadius()});
+    s.setPosition(initialPosition);
+    s.setFillColor(sf::Color::Transparent);
+    s.setOutlineThickness(1);
+    n += 2;
+  }
 
   while (window.isOpen()) {
     for (auto event = sf::Event(); window.pollEvent(event);) {
@@ -51,27 +54,57 @@ int main() {
     sf::Time elapsed = clock.restart();
     ImGui::SFML::Update(window, elapsed);
 
-    drawGui(freq);
+    drawGui(freq, nextSize, nextAmplitude);
+    if (nextSize != nWaves || nextAmplitude != amplitude) {
+      amplitude = nextAmplitude;
+      if (nextSize < 0) {
+        nextSize = nWaves;
+      }
+
+      nWaves = nextSize;
+      series.resize(nWaves);
+      int n = 1;
+      for (auto &s : series) {
+        s.setRadius(amplitude / n);
+        s.setOrigin({s.getRadius(), s.getRadius()});
+        s.setPosition(initialPosition);
+        s.setFillColor(sf::Color::Transparent);
+        s.setOutlineThickness(1);
+        n += 2;
+      }
+    }
 
     time += elapsed.asSeconds();
-    float x = amplitude * std::cos(time * freq + phase);
-    float y = amplitude * std::sin(time * freq + phase);
-    other.setPosition(x + 200, y + 200);
+
+    n = 1;
+    float x = initialPosition.x, y = initialPosition.y;
+
+    for (auto &s : series) {
+      x += s.getRadius() * std::cos(n * time * freq);
+      y += s.getRadius() * std::sin(n * time * freq);
+
+      sf::Vector2f newPos = {x, y};
+
+      s.setPosition(newPos);
+      n += 2;
+    }
 
     for (int i = wave.getVertexCount() - 1; i > 0; i--) {
       wave[i].position.y = wave[i - 1].position.y;
-      wave[i].position.x = 400 + i;
+      wave[i].position.x = wave[i - 1].position.x + 1;
     }
-    wave[0].position = sf::Vector2f({400, y + 200});
+    wave[0].position.x = initialPosition.x + 200;
+    wave[0].position.y = y;
 
-    line[0].position = other.getPosition();
+    line[0].position = series.back().getPosition();
     line[1].position = wave[0].position;
 
     window.clear();
     ImGui::SFML::Render(window);
 
-    window.draw(other);
-    window.draw(circle);
+    for (auto &s : series)
+      window.draw(s);
+
     window.draw(wave);
     window.draw(line);
 
@@ -80,8 +113,10 @@ int main() {
   ImGui::SFML::Shutdown();
 }
 
-void drawGui(float &freq) {
+void drawGui(float &freq, int &nWaves, float &amplitude) {
   ImGui::Begin("Tools");
   ImGui::SliderFloat("Freq", &freq, 0, 10);
+  ImGui::SliderFloat("Amp", &amplitude, 1, 100);
+  ImGui::InputInt("Nwaves", &nWaves);
   ImGui::End();
 }
