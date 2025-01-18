@@ -45,5 +45,7 @@ This project provides a visual representation of fourier series for constructing
 
 ## Capture
 
+https://github.com/user-attachments/assets/8c31c28b-5d18-4b7a-b2b0-55b43ad7e19b
+
 
 
